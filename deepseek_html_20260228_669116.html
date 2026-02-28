@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waking Up...</title>
+    <!-- Theme Color - Metallic Gold matching spinner -->
+    <meta name="theme-color" content="#C0B283">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 380px;
+            height: 380px;
+            position: relative;
+        }
+        
+        /* Loading container */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            transform: translateY(-30px);
+        }
+        
+        /* Spinner - BADA CIRCLE */
+        .spinner {
+            width: 100px;
+            height: 100px;
+            border: 5px solid #2a2a2a;
+            border-radius: 50%;
+            border-top-color: #C0B283;
+            animation: spin 1.5s infinite;
+        }
+        
+        /* Message container */
+        .message {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2px;
+            color: #666666;
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1;
+        }
+        
+        #messageText {
+            display: inline-block;
+            line-height: 1;
+            color: #ffffff;
+            transition: opacity 0.15s ease;
+        }
+        
+        .dots-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 16px;
+        }
+        
+        .dot {
+            display: inline-block;
+            width: 3px;
+            height: 3px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+            transform-origin: center;
+            margin-bottom: 2px;
+        }
+        
+        .dot1 { animation-delay: 0s; }
+        .dot2 { animation-delay: 0.2s; }
+        .dot3 { animation-delay: 0.4s; }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+                animation-timing-function: ease-in;
+            }
+            25% {
+                transform: rotate(180deg);
+                animation-timing-function: linear;
+            }
+            50% {
+                transform: rotate(360deg);
+                animation-timing-function: ease-out;
+            }
+            75% {
+                transform: rotate(540deg);
+                animation-timing-function: linear;
+            }
+            100% {
+                transform: rotate(720deg);
+            }
+        }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { 
+                transform: scale(0);
+                opacity: 0.5;
+            }
+            40% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 420px) {
+            .container {
+                width: 320px;
+                height: 320px;
+            }
+            
+            .spinner {
+                width: 80px;
+                height: 80px;
+                border-width: 4px;
+            }
+            
+            .message {
+                font-size: 14px;
+            }
+        }
+        
+        /* Success state - NO GREEN, just FAST SPIN at the end */
+        .success .spinner {
+            border-top-color: #C0B283;  /* Same gold color */
+            animation: spin 1.2s infinite;  /* Thoda SA FAST spin - 1.5s se 1.2s kar diya */
+        }
+        
+        .success #messageText {
+            color: #C0B283;  /* Gold color for text */
+        }
+        
+        .success .dot {
+            background-color: #C0B283;  /* Gold color for dots */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Pure loading animation -->
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <div class="message">
+                <span id="messageText">Loading</span>
+                <div class="dots-container">
+                    <span class="dot dot1"></span>
+                    <span class="dot dot2"></span>
+                    <span class="dot dot3"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== MESSAGE ROTATION ==========
+        const messages = [
+            "Almost there",
+            "Just a moment", 
+            "Getting ready",
+            "Please wait"
+        ];
+        
+        let msgIndex = 0;
+        const textEl = document.getElementById('messageText');
+        
+        // Start message rotation
+        setInterval(() => {
+            textEl.style.opacity = '0.7';
+            setTimeout(() => {
+                msgIndex = (msgIndex + 1) % messages.length;
+                textEl.textContent = messages[msgIndex];
+                textEl.style.opacity = '1';
+            }, 150);
+        }, 2500);
+        
+        // ========== WAKE-UP DETECTION ==========
+        const MAIN_WEBSITE_URL = "https://mybmb-user.onrender.com";
+        
+        // Elements
+        const container = document.querySelector('.container');
+        
+        // Variables
+        let isRedirecting = false;
+        let pingInterval;
+        let startTime = Date.now();
+        let pingQueue = Promise.resolve();
+        let consecutiveSuccessCount = 0;
+        
+        console.log("🚀 WAKE-UP DETECTION STARTED");
+        console.log(`🌐 Target URL: ${MAIN_WEBSITE_URL}`);
+        
+        // Update status through message text
+        function updateStatus(message, type = 'info') {
+            const prefix = type === 'success' ? '✅' : type === 'error' ? '❌' : '🔄';
+            console.log(`${prefix} ${message}`);
+            
+            if (type === 'success') {
+                textEl.textContent = "Ready!";
+            } else if (type === 'error') {
+                textEl.textContent = "Offline";
+                setTimeout(() => {
+                    if (!isRedirecting) {
+                        textEl.textContent = messages[msgIndex];
+                    }
+                }, 2000);
+            }
+        }
+        
+        // Ultra-fast ping function
+        async function ultraFastPing() {
+            if (isRedirecting) return false;
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1000);
+                
+                await fetch(MAIN_WEBSITE_URL, {
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    signal: controller.signal,
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                return true;
+                
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // Redirect to main website
+        function redirectToWebsite() {
+            if (isRedirecting) return;
+            isRedirecting = true;
+            
+            console.log("🎉 WEBSITE WOKE UP! REDIRECTING NOW...");
+            updateStatus("Website awake! Redirecting...", 'success');
+            
+            if (pingInterval) {
+                clearInterval(pingInterval);
+                pingInterval = null;
+            }
+            
+            container.classList.add('success');
+            
+            const totalTime = Date.now() - startTime;
+            console.log(`⏱️ Total time: ${totalTime}ms`);
+            
+            setTimeout(() => {
+                window.location.href = MAIN_WEBSITE_URL;
+            }, 100);
+        }
+        
+        // Start ultra-fast pinging
+        function startUltraFastPinging() {
+            console.log("⚡ Starting ultra-fast pinging...");
+            updateStatus("Pinging website...", 'info');
+            
+            pingQueue = pingQueue.then(async () => {
+                const isAwake = await ultraFastPing();
+                if (isAwake) {
+                    redirectToWebsite();
+                }
+            });
+            
+            pingInterval = setInterval(() => {
+                if (isRedirecting) {
+                    clearInterval(pingInterval);
+                    return;
+                }
+                
+                pingQueue = pingQueue.then(async () => {
+                    if (isRedirecting) return;
+                    
+                    const isAwake = await ultraFastPing();
+                    
+                    if (isAwake) {
+                        consecutiveSuccessCount++;
+                        if (consecutiveSuccessCount >= 2) {
+                            clearInterval(pingInterval);
+                            setTimeout(redirectToWebsite, 0);
+                        }
+                    } else {
+                        consecutiveSuccessCount = 0;
+                    }
+                    
+                }).catch(error => {
+                    console.error("Ping error:", error);
+                });
+                
+            }, 20);
+        }
+        
+        // Initial check
+        async function performInitialCheck() {
+            console.log("🔍 Initial check...");
+            updateStatus("Initial check...", 'info');
+            startTime = Date.now();
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 800);
+                
+                await fetch(MAIN_WEBSITE_URL, {
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                console.log("✅ Website already awake!");
+                updateStatus("Website already awake!", 'success');
+                
+                setTimeout(() => {
+                    redirectToWebsite();
+                }, 200);
+                
+            } catch (error) {
+                console.log("💤 Website sleeping, starting pinging...");
+                updateStatus("Website sleeping, pinging...", 'info');
+                setTimeout(startUltraFastPinging, 10);
+            }
+        }
+        
+        // Safety timeout
+        setTimeout(() => {
+            if (!isRedirecting) {
+                console.log("⏰ 2 minutes passed, forcing redirect...");
+                updateStatus("Time limit reached, redirecting...", 'info');
+                redirectToWebsite();
+            }
+        }, 120000);
+        
+        // Start when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("📄 DOM loaded, starting wake-up detection...");
+            performInitialCheck();
+        });
+        
+        window.addEventListener('load', () => {
+            console.log("🔄 Window loaded");
+            if (!pingInterval && !isRedirecting) {
+                setTimeout(performInitialCheck, 1);
+            }
+        });
+        
+        // Internet connection status
+        window.addEventListener('online', () => {
+            console.log("🟢 Internet ONLINE");
+            updateStatus("Internet connected", 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log("🔴 Internet OFFLINE");
+            updateStatus("No internet", 'error');
+        });
+    </script>
+</body>
+</html>
